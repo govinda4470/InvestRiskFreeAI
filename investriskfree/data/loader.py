@@ -129,6 +129,34 @@ def load_index_daily(symbol: str = "^NSEI", source: str | None = None) -> pd.Dat
     raise FileNotFoundError("no index data")
 
 
+def fetch_quote(symbol: str) -> float | None:
+    """Latest tradable price for an NSE symbol (yfinance live), or None.
+
+    Works on the user's machine / Streamlit Cloud where outbound internet is
+    available. Returns None when no live feed is reachable (offline sandbox),
+    so callers fall back to the last close of the bundled dataset.
+    """
+    try:
+        import yfinance as yf
+
+        t = yf.Ticker(f"{symbol}.NS")
+        try:
+            fi = t.fast_info
+            px = fi.get("last_price")
+            if px is not None and float(px) > 0:
+                return float(px)
+        except Exception:
+            pass
+        h = t.history(period="2d", interval="1d", auto_adjust=True)
+        if h is not None and len(h) > 0:
+            px = float(h["Close"].iloc[-1])
+            if px > 0:
+                return px
+    except Exception:
+        pass
+    return None
+
+
 def list_bundled_symbols() -> list[str]:
     """All symbols with bundled data (excludes the index file)."""
     out = []

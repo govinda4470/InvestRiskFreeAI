@@ -173,19 +173,26 @@ def page_dashboard():
             for s in actionable:
                 pwin = f"{s['profit_prob_pct']:.0f}%" if s.get("profit_prob_pct") else "n/a"
                 dur = f"~{s['expected_duration_days']:.0f}d" if s.get("expected_duration_days") else "—"
+                gap = s.get("gap_from_entry_pct")
+                gap_str = f"{gap:+.1f}%" if gap is not None else "—"
                 rows.append({
                     "Symbol": s["symbol"], "Style": STYLE_META[s["style"]][0],
                     "Strategy": s["strategy"], "Action": "BUY",
-                    "Entry≈": fmt(s["entry_ref"]), "Stop": fmt(s["sl"]),
-                    "Target": fmt(s["target"]), "R:R": f"1:{s['rr']:.1f}",
+                    "Last ₹": fmt(s.get("last_price")),
+                    "Entry≈": fmt(s["entry_ref"]),
+                    "vs Entry": gap_str,
+                    "Stop": fmt(s["sl"]), "Target": fmt(s["target"]),
+                    "R:R": f"1:{s['rr']:.1f}",
                     "Confidence": f"{s['confidence']:.0f}%", "Level": s["level"],
                     "P(win)": pwin, "Duration": dur,
                     "From backtest": f"{s['win_rate_pct']:.0f}% win / {s['expected_duration_days']:.0f}d"
                     if s.get("win_rate_pct") else "—",
                 })
             st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
-            st.caption("Entry is reference price (signal close). Paper trade at next bar's open in reality. "
-                       "RR 0.00 means the stop is dynamic (e.g. trend line), engine handles it on close.")
+            st.caption("**Last ₹** = latest available price (live quote when 'Live data' is on, else the "
+                       "last close in the dataset). **vs Entry** = how far the current price is from the "
+                       "signal entry. Entry is reference price (signal close); paper trade at next bar's open "
+                       "in reality. RR 0.00 means the stop is dynamic (e.g. trend line).")
         else:
             st.info("No actionable signals right now. Waiting is a position — capital protected.")
         if blocked:
@@ -324,25 +331,28 @@ def page_paper():
             with st.container(border=True):
                 st.markdown(f"### ⭐ Top pick: **{best_sig['symbol']}** — {best_sig['strategy']} "
                             f"(score {best_score:.0f})")
-                cols = st.columns(5)
-                cols[0].markdown(f"**Entry ≈** ₹{fmt(best_sig['entry_ref'])}")
-                cols[1].markdown(f"**SL** ₹{fmt(best_sig['sl'])} · **TGT** ₹{fmt(best_sig['target'])}")
-                cols[2].markdown(f"**R:R** 1:{best_sig['rr']:.1f} · **P(win)** "
+                cols = st.columns(6)
+                cols[0].markdown(f"**Last ₹** {fmt(best_sig.get('last_price'))}")
+                cols[1].markdown(f"**Entry ≈** ₹{fmt(best_sig['entry_ref'])}")
+                cols[2].markdown(f"**SL** ₹{fmt(best_sig['sl'])} · **TGT** ₹{fmt(best_sig['target'])}")
+                cols[3].markdown(f"**R:R** 1:{best_sig['rr']:.1f} · **P(win)** "
                                  f"{best_sig.get('profit_prob_pct', '—')}%")
-                cols[3].markdown(f"**Confidence** {best_sig['confidence']:.0f}% ({best_sig['level']})")
+                cols[4].markdown(f"**Confidence** {best_sig['confidence']:.0f}% ({best_sig['level']})")
                 if best_sugg.get("blocked"):
-                    cols[4].markdown(f"⚠️ {best_sugg['blocked']}")
+                    cols[5].markdown(f"⚠️ {best_sugg['blocked']}")
                 else:
-                    cols[4].markdown(f"**Suggested:** {best_sugg['qty']} qty · "
+                    cols[5].markdown(f"**Suggested:** {best_sugg['qty']} qty · "
                                      f"₹{best_sugg['pos_value']:,.0f} "
                                      f"({best_sugg['pos_value'] / equity * 100:.1f}% of equity)")
-                st.caption(best_sig["reason"])
+                st.caption(f"{best_sig['reason']} · Last price as of {best_sig.get('as_of', '?')}")
             rows = []
             for score, s, sugg in ranked:
                 rows.append({
                     "Rank": "#" + str(ranked.index((score, s, sugg)) + 1),
                     "Symbol": s["symbol"], "Strategy": s["strategy"],
                     "Score": f"{score:.0f}", "Confidence": f"{s['confidence']:.0f}%",
+                    "Last ₹": fmt(s.get("last_price")),
+                    "Entry ₹": fmt(s["entry_ref"]),
                     "P(win)": f"{s.get('profit_prob_pct', '—')}%",
                     "R:R": f"1:{s['rr']:.1f}",
                     "Suggested qty": sugg["qty"] if not sugg.get("blocked") else "—",
@@ -368,7 +378,9 @@ def page_paper():
                                 f"({s['confidence']:.0f} conf) · P(win) {pwin} · "
                                 f"R:R 1:{s['rr']:.1f} · {s['reason']}")
                     cols = st.columns([2, 1.2, 1.2, 1.2, 1.2, 1])
-                    cols[0].markdown(f"Entry ≈ ₹{fmt(s['entry_ref'])} · SL ₹{fmt(s['sl'])} · "
+                    gap = s.get("gap_from_entry_pct")
+                    cols[0].markdown(f"**Last ₹{fmt(s.get('last_price'))}** ({gap:+.1f}% vs entry) · "
+                                     f"Entry ≈ ₹{fmt(s['entry_ref'])} · SL ₹{fmt(s['sl'])} · "
                                      f"TGT ₹{fmt(s['target'])}")
                     if sugg.get("blocked"):
                         cols[1].markdown(f"⚠️ **{sugg['blocked']}**")

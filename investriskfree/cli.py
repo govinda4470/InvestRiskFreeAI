@@ -71,15 +71,16 @@ def cmd_backtest(args) -> int:
 
 def cmd_scan(args) -> int:
     from .scanner import scan
-    signals = scan(capital=args.capital, styles=tuple(args.styles.split(",")))
+    signals = scan(capital=args.capital, styles=tuple(args.styles.split(",")),
+                   real_intraday=args.live)
     print(f"{'SYM':12s} {'STYLE':9s} {'STRATEGY':18s} {'CONF':>5s} {'LVL':8s} "
-          f"{'ENTRY':>8s} {'SL':>8s} {'TGT':>8s} {'RR':>4s} {'P(win)':>7s} STATUS")
+          f"{'LAST':>8s} {'ENTRY':>8s} {'SL':>8s} {'TGT':>8s} {'RR':>4s} {'P(win)':>7s} STATUS")
     for s in signals:
         pwin = f"{s['profit_prob_pct']:.0f}%" if s.get("profit_prob_pct") is not None else "n/a"
         status = s["blocked"] or "ACTION"
         print(f"{s['symbol']:12s} {s['style']:9s} {s['strategy']:18s} "
-              f"{s['confidence']:5.1f} {s['level']:8s} {s['entry_ref']:8.2f} "
-              f"{s['sl']:8.2f} {s['target']:8.2f} {s['rr']:4.2f} {pwin:7s} {status}")
+              f"{s['confidence']:5.1f} {s['level']:8s} {s.get('last_price', 0):8.2f} "
+              f"{s['entry_ref']:8.2f} {s['sl']:8.2f} {s['target']:8.2f} {s['rr']:4.2f} {pwin:7s} {status}")
     blocked = sum(1 for s in signals if s["blocked"])
     print(f"\n{len(signals) - blocked} actionable signals, {blocked} blocked by risk rules")
     return 0
@@ -137,6 +138,8 @@ def main(argv=None) -> int:
     s = sub.add_parser("scan", help="scan universe for today's signals")
     s.add_argument("--capital", type=float, default=100_000)
     s.add_argument("--styles", default="swing,invest,intraday")
+    s.add_argument("--live", action="store_true",
+                   help="try to fetch fresh live quotes (yfinance) for the Last price")
     s.set_defaults(fn=cmd_scan)
 
     st = sub.add_parser("stats", help="show strategy registry")

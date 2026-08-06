@@ -41,6 +41,8 @@ def _signal_on_last_bar(strategy, df: pd.DataFrame) -> dict | None:
     last = df.iloc[-1]
     return {
         "entry_px_ref": float(last["Close"]),
+        "last_price": float(last["Close"]),
+        "as_of": last.name.date() if hasattr(last.name, "date") else str(last.name),
         "sl": float(sig["sl"].iloc[-1]),
         "target": float(sig["target"].iloc[-1]),
         "rr": float(sig["rr"].iloc[-1]),
@@ -124,17 +126,17 @@ def scan(
                     if label == "RISK-OFF":
                         signals.append(_mk_signal(sym, strat, sig, capital, demo,
                                                   blocked="RISK-OFF regime: market below 200SMA, longs blocked",
-                                                  label=label, br=br))
+                                                  label=label, br=br, live=real_intraday))
                         continue
                 conf = confidence_score(daily, br, regime_ok_last, confluence=1)
                 if conf < get("brain.min_confidence", 55):
                     signals.append(_mk_signal(sym, strat, sig, capital, demo,
                                               blocked=f"confidence {conf:.0f} < {get('brain.min_confidence', 55)}",
-                                              label=label, br=br, conf=conf))
+                                              label=label, br=br, conf=conf, live=real_intraday))
                     continue
                 signals.append(_mk_signal(sym, strat, sig, capital, demo,
                                           label=label, br=br, conf=conf,
-                                          stats_reg=stats_reg))
+                                          stats_reg=stats_reg, live=real_intraday))
         except Exception:
             continue
     if progress_cb:
@@ -144,7 +146,7 @@ def scan(
 
 
 def _mk_signal(sym, strat, sig, capital, demo, blocked=None, label="", br=0.5,
-               conf=None, stats_reg: dict | None = None) -> dict:
+               conf=None, stats_reg: dict | None = None, live: bool = False) -> dict:
     stats_reg = stats_reg or {}
     style = strat.style
     entry_ref = sig["entry_px_ref"]
@@ -155,9 +157,27 @@ def _mk_signal(sym, strat, sig, capital, demo, blocked=None, label="", br=0.5,
     conf = conf if conf is not None else 50.0
     level = "STRONG" if conf >= get("brain.strong_confidence", 70) else \
             ("MODERATE" if conf >= get("brain.min_confidence", 55) else "WEAK")
+
+    # ---- current / last price ----
+    last_price = sig.get("last_price", entry_ref)
+    as_of = sig.get("as_of", "")
+    if live:
+        # try a fresh real-time quote (works on user machine / Streamlit Cloud)
+        from .data.loader import fetch_quote
+        q = fetch_quote(sym)
+        if q is not None and q > 0:
+            last_price = q
+            as_of = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
+    gap_from_entry = (last_price / entry_ref - 1) * 100 if entry_ref else 0.0
+    dist_to_sl = (last_price / sl - 1) * 100 if sl and sl > 0 else 0.0
+    dist_to_target = (target / last_price - 1) * 100 if target and last_price else 0.0
     return {
         "symbol": sym, "style": style, "strategy": strat.name,
         "action": "LONG", "entry_ref": entry_ref, "sl": sl, "target": target,
+        "last_price": round(float(last_price), 2), "as_of": str(as_of),
+        "gap_from_entry_pct": round(float(gap_from_entry), 2),
+        "dist_to_sl_pct": round(float(dist_to_sl), 2),
+        "dist_to_target_pct": round(float(dist_to_target), 2),
         "rr": float(rr) if rr == rr else 0.0, "confidence": round(conf, 1),
         "level": level, "blocked": blocked, "reason": sig["reason"],
         "regime": label, "breadth": round(br, 3), "demo_data": demo,
