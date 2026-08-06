@@ -5,6 +5,9 @@ Swing trading, intraday, and investment styles — every signal comes with its o
 backtested *profit probability %* and *expected duration*, you paper-trade with
 virtual money first, and hard risk rules make sure your capital survives.
 
+> 📖 **New here? Read the [step-by-step USER GUIDE](USER_GUIDE.md) first** — it
+> walks you from opening the app to your first paper trade in ~10 minutes.
+
 > ⚠️ **Honest words up front (read this twice):** there is no such thing as a
 > risk-free return in markets. Anyone promising one is lying to you. What this
 > system actually does — and what the user asked for — is:
