@@ -1,0 +1,101 @@
+# ============================================================
+# InvestRiskFreeAI - Global Configuration
+# Capital-protection-first, low-risk AI signal system for NSE
+# ============================================================
+
+# ---- Capital & risk (THE most important settings) ----
+capital:
+  starting_paper_capital: 100000      # virtual money for paper trading (₹)
+  risk_per_trade_pct: 0.5             # max % of capital risked per trade (0.25-1.0)
+  max_position_pct: 25.0              # max % of capital in a single position
+  max_open_positions: 3               # never hold more than this many positions
+  min_position_value: 2500            # minimum ₹ per position (below = costs eat you)
+
+# ---- Universe (low-risk liquid stocks only) ----
+universe:
+  source: bundled                     # bundled | yfinance | nse
+  max_price: 5000                     # ignore ultra-high priced stocks (affordability)
+  min_price: 20
+  min_avg_volume: 100000              # shares traded per day
+  min_avg_turnover_cr: 5              # ₹ crore per day (liquidity)
+  exclude: [HDFC, INFRATEL]           # merged / delisted names in bundled data
+
+# ---- Data ----
+data:
+  cache_dir: data/cache
+  bundled_dir: data/bundled/nse_daily
+  intraday_interval: 5m               # for intraday strategies
+  tz: Asia/Kolkata
+
+# ---- Trading costs (Indian market, Zerodha-style, configurable) ----
+costs:
+  brokerage_per_order: 20.0           # ₹ flat per order (or 0.03% whichever lower)
+  brokerage_pct: 0.0003               # 0.03%
+  stt_delivery: 0.001                 # 0.1% on delivery (buy+sell)
+  stt_intraday_sell: 0.00025          # 0.025% on intraday sell side
+  exchange_charges: 0.0000297         # NSE equity ~0.00297% of turnover
+  gst_pct: 0.18                       # 18% GST on brokerage + exchange charges
+  sebi_fees: 0.000001                 # ~₹10/crore
+  stamp_duty_delivery: 0.00015        # 0.015% buy side delivery
+  stamp_duty_intraday: 0.00003        # 0.003% buy side intraday
+  slippage_daily: 0.0005              # 0.05% slippage per trade (daily styles)
+  slippage_intraday: 0.0010           # 0.10% slippage per trade (intraday styles)
+
+# ---- AI Brain ----
+brain:
+  min_confidence: 55                  # below this -> NO TRADE
+  strong_confidence: 70               # >= this -> STRONG signal
+  regime:
+    min_breadth: 0.4                  # fraction of stocks above 200SMA required
+    vol_percentile_max: 90            # skip when market volatility > 90th pct
+  ml:
+    enabled: true                     # logistic-regression win probability model
+    min_train_years: 3                # minimum history before model engages
+    walk_forward_splits: 3            # number of out-of-sample folds
+
+# ---- Strategies ----
+strategies:
+  swing_trend:
+    enabled: true
+    ema_fast: 20
+    ema_slow: 50
+    atr_period: 14
+    atr_sl_mult: 2.2                  # stop = entry - 2.2*ATR
+    atr_target_mult: 3.5              # target = entry + 3.5*ATR
+    max_hold_days: 20
+  swing_meanrev:
+    enabled: false                 # LAB ONLY: RSI(2) dip-buying. Honest result on
+                                   # 10y of NSE data: win rate ~52% but costs push
+                                   # expectancy to ~0. Keep disabled for capital
+                                   # protection; experiment in the Strategy Lab.
+    rsi_period: 2
+    rsi_buy_below: 15
+    rsi_exit_above: 60
+    ema_trend: 50
+    max_hold_days: 15
+  swing_breakout:
+    enabled: true
+    donchian_period: 20
+    vol_mult: 1.5                     # volume must exceed 1.5x 20-day average
+    atr_sl_mult: 2.0
+    atr_target_mult: 3.0
+    max_hold_days: 25
+  intraday_orb:
+    enabled: true
+    opening_range_minutes: 15         # 9:15-9:30 range
+    breakout_buffer_atr: 0.35         # enter above range high + 0.35*ATR
+    sl_atr: 1.2
+    target_atr: 2.2
+  intraday_vwap:
+    enabled: false                 # LAB ONLY: VWAP deviation fade. Loses money on
+                                   # tested data (expectancy negative) - disabled
+                                   # for capital protection; experiment in the Lab.
+    dev_mult: 1.8                     # enter when price deviates 1.8*std from VWAP
+    sl_atr: 0.8
+    target_atr: 1.4
+  invest:
+    enabled: true
+    ema_trend: 50
+    sma_long: 200
+    pullback_pct: 5                   # buy dips of up to 5% below recent high
+    max_hold_days: 120
