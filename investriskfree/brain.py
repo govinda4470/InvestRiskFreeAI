@@ -138,3 +138,51 @@ def position_size(
         return {"qty": qty, "risk_rs": risk_amt, "pos_value": pos_value,
                 "blocked": f"position ₹{pos_value:,.0f} below min ₹{min_value:,.0f} (costs would eat profits)"}
     return {"qty": qty, "risk_rs": risk_amt, "pos_value": pos_value, "blocked": None}
+
+
+def suggest_position_from_cash(
+    cash: float, equity: float, entry: float, sl: float, style: str = "swing",
+    risk_pct: float | None = None, max_pos_pct: float | None = None,
+    min_value: float | None = None,
+) -> dict:
+    """Best position size for the AVAILABLE cash.
+
+    Sizing comes from the risk budget (risk_pct of equity) - then the quantity is
+    clamped down so the total (position + buy costs) fits in available cash.
+    Returns qty, pos_value, cost, risk_rs, blocked reason (if any).
+    """
+    from .backtest import CostModel
+
+    cm = CostModel()
+    risk_pct = risk_pct if risk_pct is not None else get("capital.risk_per_trade_pct", 0.5) / 100
+    max_pos_pct = max_pos_pct if max_pos_pct is not None else get("capital.max_position_pct", 25) / 100
+    min_value = min_value if min_value is not None else get("capital.min_position_value", 2500)
+    if entry <= 0 or sl <= 0 or entry <= sl:
+        return {"qty": 0, "pos_value": 0.0, "cost": 0.0, "risk_rs": 0.0,
+                "blocked": "invalid entry/stop levels"}
+    risk_amt = equity * risk_pct
+    risk_per_share = entry - sl
+    qty = int(risk_amt // risk_per_share)
+    if qty <= 0:
+        return {"qty": 0, "pos_value": 0.0, "cost": 0.0, "risk_rs": risk_amt,
+                "blocked": f"equity too small: risk ₹{risk_amt:,.0f} < 1 share's risk ₹{risk_per_share:,.0f}"}
+    # cap by max position % of equity
+    max_qty_by_pos = int(equity * max_pos_pct // entry)
+    qty = min(qty, max_qty_by_pos)
+    # clamp to what cash can afford (including buy costs)
+    while qty > 0:
+        pos_value = qty * entry
+        cost = cm.buy_charges(qty, entry, style)
+        if pos_value + cost <= cash:
+            break
+        qty -= 1
+    if qty <= 0:
+        return {"qty": 0, "pos_value": 0.0, "cost": 0.0, "risk_rs": risk_amt,
+                "blocked": f"cash ₹{cash:,.0f} can't afford even 1 share @ ₹{entry:,.0f}"}
+    pos_value = qty * entry
+    cost = cm.buy_charges(qty, entry, style)
+    if pos_value < min_value:
+        return {"qty": qty, "pos_value": pos_value, "cost": cost, "risk_rs": risk_amt,
+                "blocked": f"position ₹{pos_value:,.0f} below min ₹{min_value:,.0f} (costs eat profits)"}
+    return {"qty": qty, "pos_value": pos_value, "cost": cost, "risk_rs": risk_amt,
+            "blocked": None}

@@ -222,7 +222,8 @@ def page_dashboard():
 
 def page_paper():
     st.title("💰 Paper Trading — Virtual Money")
-    st.caption("Test every signal with virtual money first. Real costs (brokerage, STT, slippage) are charged.")
+    st.caption("Test every signal with virtual money first. Real costs (brokerage, STT, slippage) are charged. "
+               "You decide the quantity — the system suggests the safest size for your available capital.")
     broker = PaperBroker()
     acct = broker.account()
     if acct is None:
@@ -241,47 +242,166 @@ def page_paper():
         except Exception:
             pass
         summ = broker.summary(quotes)
-        m1, m2, m3, m4, m5 = st.columns(5)
-        m1.metric("Virtual Capital", f"₹{summ['capital']:,.0f}")
-        m2.metric("Cash", f"₹{summ['cash']:,.0f}")
+        cash = float(summ["cash"])
+        equity = float(summ["equity"])
+
+        # ---------------- risk preference ----------------
+        rc1, rc2 = st.columns([2, 1])
+        risk_pct = rc1.slider("Risk per trade (% of equity)", 0.25, 1.0,
+                              float(get("capital.risk_per_trade_pct")), 0.05,
+                              help="The suggestion engine never risks more than this % of equity on one trade.")
+        with rc2:
+            st.markdown(f"**Risk budget:** ₹{equity * risk_pct / 100:,.0f} per trade")
+
+        # ---------------- top-up ----------------
+        with st.expander("💳 Top-up capital (add virtual money to the account)", expanded=False):
+            tc1, tc2, tc3 = st.columns([2, 1, 1])
+            topup_amt = tc1.number_input("Amount to add (₹)", 1_000, 100_000_000, 50_000, step=10_000,
+                                         key="topup_amount")
+            topup_note = tc2.text_input("Note (optional)", "", key="topup_note",
+                                        placeholder="e.g. added from monthly savings")
+            if tc3.button("➕ Add capital", type="primary", width="stretch"):
+                r = broker.topup(float(topup_amt), topup_note)
+                if r["ok"]:
+                    st.success(f"Top-up done! New total capital ₹{r['new_capital']:,.0f} — "
+                               f"the 'best buy' suggestions below are updated automatically.")
+                    st.rerun()
+            events = broker.capital_events()
+            if events:
+                ev_df = pd.DataFrame(events)[["date", "type", "amount", "note"]]
+                ev_df["amount"] = ev_df["amount"].map(lambda x: f"₹{x:,.0f}")
+                st.caption("Capital history:")
+                st.dataframe(ev_df.head(10), width="stretch", hide_index=True)
+
+        st.divider()
+        m1, m2, m3, m4, m5, m6 = st.columns(6)
+        m1.metric("Total Capital", f"₹{summ['capital']:,.0f}")
+        m2.metric("Available Cash", f"₹{cash:,.0f}")
         m3.metric("Position Value", f"₹{summ['pos_value']:,.0f}")
         m4.metric("Total P&L", f"₹{summ['total_pnl']:+,.0f}",
                   delta=f"{summ['total_return_pct']:+.2f}%")
-        m5.metric("Open Positions", f"{summ['n_positions']}")
+        m5.metric("Open Positions", f"{summ['n_positions']}/{get('capital.max_open_positions', 3)}")
+        m6.metric("Risk Budget", f"₹{equity * risk_pct / 100:,.0f}")
+
+        # ---------------- signals ----------------
+        live = st.toggle("Live data (yfinance)", value=False)
+        signals = cached_scan(100_000, ("swing", "invest", "intraday"), live)
+        actionable = [s for s in signals if not s["blocked"]]
+        max_positions = int(get("capital.max_open_positions", 3))
+        at_position_limit = summ["n_positions"] >= max_positions
+
+        # ---- suggestion engine: best buys given available capital ----
+        def _suggest(s, risk_p):
+            """Return (score, suggestion dict) for ranking + display."""
+            from investriskfree.brain import suggest_position_from_cash
+            sugg = suggest_position_from_cash(cash, equity, s["entry_ref"], s["sl"],
+                                              s["style"], risk_p)
+            score = s["confidence"] * 0.6
+            if s.get("profit_prob_pct"):
+                score += min(float(s["profit_prob_pct"]), 100) * 0.25
+            score += min(float(s["rr"] or 0), 3.0) * 8
+            if sugg.get("blocked"):
+                score -= 25
+            else:
+                score += 15  # affordable bonus
+            return score, sugg
+
+        ranked = []
+        for s in actionable:
+            score, sugg = _suggest(s, risk_pct)
+            ranked.append((score, s, sugg))
+        ranked.sort(key=lambda x: -x[0])
 
         st.divider()
-        tab1, tab2, tab3 = st.tabs(["📡 Signals to trade", "📂 Open positions", "📜 Trade journal"])
+        st.subheader("🏆 Best buys for your current capital")
+        st.caption("Ranked by confidence + backtested profit probability + reward:risk + "
+                   "whether your available cash can afford the suggested position. "
+                   "**Scores refresh automatically when you top up capital.**")
+        if not ranked:
+            st.info("No actionable signals right now. Holding cash is a position too — capital protected.")
+        else:
+            best_score, best_sig, best_sugg = ranked[0]
+            with st.container(border=True):
+                st.markdown(f"### ⭐ Top pick: **{best_sig['symbol']}** — {best_sig['strategy']} "
+                            f"(score {best_score:.0f})")
+                cols = st.columns(5)
+                cols[0].markdown(f"**Entry ≈** ₹{fmt(best_sig['entry_ref'])}")
+                cols[1].markdown(f"**SL** ₹{fmt(best_sig['sl'])} · **TGT** ₹{fmt(best_sig['target'])}")
+                cols[2].markdown(f"**R:R** 1:{best_sig['rr']:.1f} · **P(win)** "
+                                 f"{best_sig.get('profit_prob_pct', '—')}%")
+                cols[3].markdown(f"**Confidence** {best_sig['confidence']:.0f}% ({best_sig['level']})")
+                if best_sugg.get("blocked"):
+                    cols[4].markdown(f"⚠️ {best_sugg['blocked']}")
+                else:
+                    cols[4].markdown(f"**Suggested:** {best_sugg['qty']} qty · "
+                                     f"₹{best_sugg['pos_value']:,.0f} "
+                                     f"({best_sugg['pos_value'] / equity * 100:.1f}% of equity)")
+                st.caption(best_sig["reason"])
+            rows = []
+            for score, s, sugg in ranked:
+                rows.append({
+                    "Rank": "#" + str(ranked.index((score, s, sugg)) + 1),
+                    "Symbol": s["symbol"], "Strategy": s["strategy"],
+                    "Score": f"{score:.0f}", "Confidence": f"{s['confidence']:.0f}%",
+                    "P(win)": f"{s.get('profit_prob_pct', '—')}%",
+                    "R:R": f"1:{s['rr']:.1f}",
+                    "Suggested qty": sugg["qty"] if not sugg.get("blocked") else "—",
+                    "Needed ₹": f"{sugg['pos_value']:,.0f}" if not sugg.get("blocked") else "—",
+                    "Note": sugg.get("blocked") or f"{sugg['pos_value'] / equity * 100:.1f}% of equity",
+                })
+            st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+
+        # ---------------- trade tab ----------------
+        st.divider()
+        tab1, tab2, tab3, tab4 = st.tabs(["📡 Signals to trade", "📂 Open positions",
+                                          "📜 Trade journal", "💹 Equity curve"])
         with tab1:
-            live = st.toggle("Live data (yfinance)", value=False)
-            signals = cached_scan(100_000, ("swing", "invest"), live)
-            actionable = [s for s in signals if not s["blocked"]]
+            if at_position_limit:
+                st.warning(f"You already have {summ['n_positions']} open positions "
+                           f"(max {max_positions}). Close one before buying — capital protection rule 4.")
             if not actionable:
                 st.info("No actionable signals. Holding cash is a position too.")
-            for s in actionable[:10]:
+            for score, s, sugg in ranked:
                 with st.container(border=True):
-                    cols = st.columns([3, 2, 2, 2, 2, 1])
                     pwin = f"{s['profit_prob_pct']:.0f}%" if s.get("profit_prob_pct") else "—"
-                    cols[0].markdown(f"**{s['symbol']}** · {s['strategy']} · {s['level']} "
-                                     f"({s['confidence']:.0f} conf)")
-                    cols[1].markdown(f"Entry ≈ {fmt(s['entry_ref'])}")
-                    cols[2].markdown(f"SL {fmt(s['sl'])} · TGT {fmt(s['target'])}")
-                    cols[3].markdown(f"R:R 1:{s['rr']:.1f} · P(win) {pwin}")
-                    cols[4].markdown(f"{s['reason']}")
+                    st.markdown(f"**{s['symbol']}** · {s['strategy']} · {s['level']} "
+                                f"({s['confidence']:.0f} conf) · P(win) {pwin} · "
+                                f"R:R 1:{s['rr']:.1f} · {s['reason']}")
+                    cols = st.columns([2, 1.2, 1.2, 1.2, 1.2, 1])
+                    cols[0].markdown(f"Entry ≈ ₹{fmt(s['entry_ref'])} · SL ₹{fmt(s['sl'])} · "
+                                     f"TGT ₹{fmt(s['target'])}")
+                    if sugg.get("blocked"):
+                        cols[1].markdown(f"⚠️ **{sugg['blocked']}**")
+                    else:
+                        cols[1].markdown(f"✅ Suggested: **{sugg['qty']} qty** "
+                                         f"(₹{sugg['pos_value']:,.0f})")
+                    max_affordable = sugg["qty"] if not sugg.get("blocked") else 0
+                    qty = cols[2].number_input("Quantity", min_value=1, max_value=max(10000, max_affordable),
+                                               value=max(1, max_affordable), step=1,
+                                               key=f"qty_{s['symbol']}_{s['strategy']}",
+                                               label_visibility="collapsed",
+                                               help="Enter how many shares YOU want. The suggested value "
+                                                    "is the safest size for your capital.")
+                    qty = int(qty)
+                    est_value = qty * s["entry_ref"]
+                    est_risk = qty * (s["entry_ref"] - s["sl"])
+                    from investriskfree.backtest import CostModel as _CM
+                    est_cost = _CM().buy_charges(qty, s["entry_ref"], s["style"])
+                    cols[3].markdown(f"₹{est_value:,.0f} · risk ₹{est_risk:,.0f}")
+                    over = (est_value + est_cost) > cash
+                    cols[4].markdown("🔴 exceeds cash" if over else
+                                     f"{(est_value + est_cost) / cash * 100:.1f}% of cash")
                     if cols[5].button("Buy 📈", key=f"buy_{s['symbol']}_{s['strategy']}",
-                                       type="primary"):
-                        sizing = s.get("sizing") or {}
-                        qty = sizing.get("qty", 0)
-                        if qty <= 0:
-                            st.warning(f"Cannot size position: {sizing.get('blocked', 'n/a')}")
+                                      type="primary", disabled=bool(at_position_limit or over or qty <= 0)):
+                        res = broker.buy(s["symbol"], s["style"], s["strategy"], qty,
+                                         s["entry_ref"], s["sl"], s["target"],
+                                         reason=s["reason"], confidence=s["confidence"])
+                        if res["ok"]:
+                            st.success(f"Paper BUY {s['symbol']} x{qty} @ {res['fill']:.2f} "
+                                       f"(costs ₹{res['costs']:.2f})")
+                            st.rerun()
                         else:
-                            res = broker.buy(s["symbol"], s["style"], s["strategy"], qty,
-                                             s["entry_ref"], s["sl"], s["target"],
-                                             reason=s["reason"], confidence=s["confidence"])
-                            if res["ok"]:
-                                st.success(f"Paper BUY {s['symbol']} x{qty} @ {res['fill']:.2f}")
-                                st.rerun()
-                            else:
-                                st.error(res["error"])
+                            st.error(res["error"])
         with tab2:
             pos = broker.positions()
             if not pos:
@@ -302,7 +422,6 @@ def page_paper():
                         if res["ok"]:
                             st.success(f"Sold at {res['fill']:.2f}, P&L ₹{res['net_pnl']:+,.0f}")
                             st.rerun()
-            # auto square-off intraday
             if any(p["style"] == "intraday" for p in pos):
                 if st.button("⏰ Square off all intraday positions (15:25 rule)"):
                     results = broker.close_all_intraday(quotes)
@@ -323,16 +442,16 @@ def page_paper():
                 m3.metric("Trades", f"{len(df)}")
             else:
                 st.info("No closed trades yet.")
-        st.divider()
-        st.subheader("Equity curve (virtual)")
-        eq = broker.equity_curve()
-        if len(eq):
-            fig = go.Figure(go.Scatter(x=eq["date"], y=eq["equity"], mode="lines",
-                                       line=dict(color="#2e7d32", width=2)))
-            fig.update_layout(height=300, margin=dict(l=10, r=10, t=30, b=10),
-                              yaxis_title="Virtual equity ₹")
-            st.plotly_chart(fig, width="stretch")
-
+        with tab4:
+            eq = broker.equity_curve()
+            if len(eq):
+                fig = go.Figure(go.Scatter(x=eq["date"], y=eq["equity"], mode="lines",
+                                           line=dict(color="#2e7d32", width=2)))
+                fig.update_layout(height=300, margin=dict(l=10, r=10, t=30, b=10),
+                                  yaxis_title="Virtual equity ₹")
+                st.plotly_chart(fig, width="stretch")
+            else:
+                st.info("No equity history yet.")
 
 def page_backtest():
     st.title("🔬 Backtest Lab")

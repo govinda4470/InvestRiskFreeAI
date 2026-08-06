@@ -86,14 +86,34 @@ Entry ≈ ₹334   SL ₹316   TGT ₹362   R:R 1:1.6 · P(win) 42% · ~5 days
 
 ## STEP 4 — Paper-trade a signal
 
-1. In **💰 Paper Trading**, the "Signals to trade" tab shows actionable signals.
-2. Click **Buy 📈** on a signal.
-3. The system computes the position size automatically from your risk budget
-   (0.5%) and charges realistic costs.
-4. The position appears under **Open positions** with live P&L.
+1. In **💰 Paper Trading**, the **"🏆 Best buys for your current capital"** panel
+   ranks today's signals by a suitability score = confidence + backtested
+   P(profit) + reward:risk + **affordability with your available cash**.
+   The **⭐ Top pick** box shows the single best opportunity with the suggested
+   quantity for your capital.
+2. In the "📡 Signals to trade" tab, every signal shows:
+   - ✅ **Suggested quantity** — the safest size for your capital (0.5% risk budget,
+     capped by what your cash can afford, all costs included).
+   - A **Quantity** box — **you decide how many shares to buy.** The suggested
+     number is pre-filled, but you can type any amount.
+   - The **₹ cost** and **risk ₹** of your chosen quantity, plus how much of your
+     cash it uses. If it exceeds your cash, the Buy button is disabled (🔴).
+3. Click **Buy 📈** — realistic costs are charged.
+4. The position appears under **📂 Open positions** with live P&L.
 5. **Sell ✋** when your target is hit, your stop is hit, or you decide to exit.
-6. Every closed trade goes into the **Trade journal** with its P&L and reason.
-7. Watch the **equity curve** at the bottom — this is your real virtual record.
+6. Every closed trade goes into the **📜 Trade journal** with its P&L and reason.
+7. Watch the **💹 Equity curve** tab — this is your real virtual record.
+
+### 💳 Top-up capital anytime (new)
+Click **"💳 Top-up capital"** → enter an amount (e.g. ₹50,000) → **Add capital**.
+Your total capital and cash increase, and **the "Best buys" panel re-ranks
+automatically with the new available cash** — bigger capital usually means the
+suggested quantity for the top pick goes up.
+
+### ⚙️ Risk per trade slider (new)
+Use the slider at the top to set your risk budget (0.25%–1% of equity). The
+suggestion engine and the "risk ₹" figures update instantly. Conservative start:
+**0.5%**. Never above 1% — capital protection first.
 
 > ⏰ **Intraday rule:** intraday positions must be squared off by 15:25 (NSE
 > close). The "Square off all intraday positions" button does this.

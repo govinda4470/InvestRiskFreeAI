@@ -54,7 +54,12 @@ class PaperBroker:
             )
             c.execute(
                 """CREATE TABLE IF NOT EXISTS equity_snapshots (
-                    date TEXT PRIMARY KEY, equity REAL)"""
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, equity REAL)"""
+            )
+            c.execute(
+                """CREATE TABLE IF NOT EXISTS capital_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT,
+                    type TEXT, amount REAL, note TEXT)"""
             )
 
     # ---------------- account ----------------
@@ -63,11 +68,47 @@ class PaperBroker:
             c.execute("DELETE FROM positions")
             c.execute("DELETE FROM trades")
             c.execute("DELETE FROM equity_snapshots")
+            c.execute("DELETE FROM capital_events")
             c.execute("DELETE FROM account")
             c.execute(
                 "INSERT INTO account(name, capital, cash, created_at, updated_at) VALUES (?,?,?,?,?)",
                 (name, capital, capital, _now(), _now()),
             )
+            c.execute(
+                "INSERT INTO capital_events(date, type, amount, note) VALUES (?,?,?,?)",
+                (_now(), "INITIAL", capital, "account created"),
+            )
+            c.execute("INSERT INTO equity_snapshots(date, equity) VALUES (?,?)",
+                      (_now(), capital))
+
+    def topup(self, amount: float, note: str = "") -> dict:
+        """Add virtual capital to the paper account (top-up)."""
+        acct = self.account()
+        if not acct:
+            raise RuntimeError("no account - create one first")
+        if amount <= 0:
+            return {"ok": False, "error": "amount must be positive"}
+        with self._conn() as c:
+            c.execute(
+                "UPDATE account SET capital=capital+?, cash=cash+?, updated_at=? WHERE id=?",
+                (amount, amount, _now(), acct["id"]),
+            )
+            c.execute(
+                "INSERT INTO capital_events(date, type, amount, note) VALUES (?,?,?,?)",
+                (_now(), "TOPUP", amount, note or "manual top-up"),
+            )
+            c.execute(
+                "INSERT INTO equity_snapshots(date, equity) VALUES (?,?)",
+                (_now(), acct["cash"] + amount),
+            )
+        return {"ok": True, "new_capital": acct["capital"] + amount}
+
+    def capital_events(self, limit: int = 50) -> list[dict]:
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT * FROM capital_events ORDER BY id DESC LIMIT ?", (limit,)
+            ).fetchall()
+            return [dict(r) for r in rows]
 
     def account(self) -> dict | None:
         with self._conn() as c:
@@ -181,9 +222,9 @@ class PaperBroker:
 
     def equity_curve(self) -> pd.DataFrame:
         with self._conn() as c:
-            rows = c.execute("SELECT date, equity FROM equity_snapshots ORDER BY date").fetchall()
+            rows = c.execute("SELECT date, equity FROM equity_snapshots ORDER BY id").fetchall()
             if not rows:
                 return pd.DataFrame(columns=["date", "equity"])
-            df = pd.DataFrame(rows)
+            df = pd.DataFrame([dict(r) for r in rows])
             df["date"] = pd.to_datetime(df["date"])
             return df

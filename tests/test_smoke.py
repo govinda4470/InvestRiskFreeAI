@@ -128,3 +128,32 @@ def test_scanner():
     for s in sigs:
         if s["blocked"]:
             assert isinstance(s["blocked"], str) and len(s["blocked"]) > 3
+
+
+def test_paper_topup(tmp_path):
+    from investriskfree.brain import suggest_position_from_cash
+    db = str(tmp_path / "paper2.db")
+    b = PaperBroker(db_path=db)
+    b.create_account(50_000)
+    r = b.topup(25_000)
+    assert r["ok"] and r["new_capital"] == 75_000
+    s = b.summary()
+    assert s["capital"] == 75_000 and s["cash"] == 75_000
+    evs = b.capital_events()
+    assert len(evs) == 2  # INITIAL + TOPUP
+    assert evs[0]["type"] == "TOPUP" and evs[0]["amount"] == 25_000
+
+
+def test_suggest_position_from_cash():
+    from investriskfree.brain import suggest_position_from_cash
+    # cash 100k, equity 100k, entry 100, sl 95: risk budget 500 -> 100 shares
+    sugg = suggest_position_from_cash(100_000, 100_000, 100, 95)
+    assert sugg["qty"] == 100 and not sugg["blocked"]
+    assert sugg["pos_value"] <= 100_000
+    # cash too small to afford even 1 share
+    sugg2 = suggest_position_from_cash(50, 100_000, 100, 95)
+    assert sugg2["qty"] == 0 and sugg2["blocked"]
+    # clamps down when cash < suggested position value
+    sugg3 = suggest_position_from_cash(8_000, 100_000, 100, 95)
+    assert sugg3["qty"] <= 80  # 8000/100 = 80 max affordable
+    assert sugg3["pos_value"] + sugg3["cost"] <= 8_000
