@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Data caches & runtime state
+data/cache/
+data/paper.db
+data/*.db
+output/
+*.log
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+.pytest_cache/

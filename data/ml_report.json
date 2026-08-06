@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "built_at": "2026-08-06 10:59:15",
+    "symbols": 10,
+    "splits": 3
+  },
+  "swing_trend": {
+    "trained": true,
+    "n_oos": 649,
+    "baseline_win_rate": 42.83513097072419,
+    "oos_win_rate": 42.83513097072419,
+    "accuracy": 63.63636363636363,
+    "precision_when_win": 59.905660377358494,
+    "lift": 1.3985170354282612,
+    "n_entries": 461
+  },
+  "swing_breakout": {
+    "trained": true,
+    "n_oos": 495,
+    "baseline_win_rate": 37.97979797979798,
+    "oos_win_rate": 37.97979797979798,
+    "accuracy": 59.59595959595959,
+    "precision_when_win": 45.52238805970149,
+    "lift": 1.1985947919974596,
+    "n_entries": 343
+  },
+  "invest": {
+    "trained": true,
+    "n_oos": 139,
+    "baseline_win_rate": 36.69064748201439,
+    "oos_win_rate": 36.69064748201439,
+    "accuracy": 65.46762589928058,
+    "precision_when_win": 52.63157894736842,
+    "lift": 1.4344685242518058,
+    "n_entries": 204
+  }
+}
