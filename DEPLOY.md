@@ -1,23 +1,25 @@
 # 🚀 Deploying InvestRiskFreeAI to a permanent public URL
 
-The app runs anywhere Streamlit runs. Pick one:
+## ✅ Status: DEPLOYED
+
+**Live public link: https://investriskfreeai-goroy.streamlit.app/**
+
+The app is already running on Streamlit Community Cloud (free tier, created by
+`govinda4470`). This page documents how it was done and how to update/redo it.
 
 ---
 
-## Option 1 — Streamlit Community Cloud (FREE, recommended)
+## Option 1 — Streamlit Community Cloud (FREE) ← used for the live link
 
-1. **Merge the PR** so `main` has the code:
-   `https://github.com/govinda4470/InvestRiskFreeAI/pull/1` → **Merge pull request**.
+1. Push the code to GitHub: `github.com/govinda4470/InvestRiskFreeAI`
 2. Go to **https://share.streamlit.io** and sign in with GitHub.
 3. Click **New app** → paste:
    - Repo: `govinda4470/InvestRiskFreeAI`
-   - Branch: `main`
+   - Branch: `main` (after merging PR #1) or `arena/019fd6a2-investriskfreeai`
    - Main file path: `app.py`
-4. Click **Deploy**. In ~3 minutes:
-   ```
-   https://investriskfreeai.streamlit.app
-   ```
-5. That URL works from any browser/phone, with no token, forever. 🎉
+4. Click **Deploy**. In ~3 minutes you get your permanent URL.
+5. To update the deployed app after new commits: on the app page click
+   **Manage app** → **Reboot** (or "Rerun" picks up new commits automatically).
 
 **Notes**
 - The cloud sandbox cannot reach NSE/Yahoo feeds, so it automatically uses the

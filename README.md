@@ -8,8 +8,9 @@ virtual money first, and hard risk rules make sure your capital survives.
 > 📖 **New here? Read the [step-by-step USER GUIDE](USER_GUIDE.md) first** — it
 > walks you from opening the app to your first paper trade in ~10 minutes.
 >
-> 🌐 **Want a permanent public link?** See **[DEPLOY.md](DEPLOY.md)** — deploy the
-> same app free to Streamlit Community Cloud / Hugging Face Spaces in ~3 minutes.
+> 🌐 **Try it live now:** 👉 **https://investriskfreeai-goroy.streamlit.app/**
+> (deployed on Streamlit Community Cloud — works from any browser, no setup).
+> See **[DEPLOY.md](DEPLOY.md)** to re-deploy or update it.
 
 > ⚠️ **Honest words up front (read this twice):** there is no such thing as a
 > risk-free return in markets. Anyone promising one is lying to you. What this

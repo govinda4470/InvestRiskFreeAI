@@ -6,38 +6,19 @@
 
 ## 🔗 LIVE APP LINK
 
-### Option A — In this Arena chat (works right now, no setup)
-The app is running live in the sandbox. Click the **"InvestRiskFreeAI app" LIVE PREVIEW
-panel** in this Arena session (the platform shows it next to this conversation).
-That panel carries the access token automatically — it always works.
+**👉 https://investriskfreeai-goroy.streamlit.app/**
 
-> ⚠️ The raw URL `https://8501-{sandbox}.e2b.app` does **not** work in a standalone
-> browser tab: the sandbox proxy enforces a traffic-access token that only the
-> Arena preview panel injects. A bare tab shows "Missing Traffic Access Token" /
-> "Sandbox Not Found". This is a security feature of the preview environment, not
-> a bug in the app.
+✅ **This is your permanent public link** — already deployed on Streamlit Community
+Cloud. It works from any browser, any device (even phone), anywhere, with no token,
+no setup. Bookmark it. Share it with anyone who wants to learn.
 
-### Option B — Get a FREE permanent public link (Streamlit Community Cloud)
-This deploys the exact same app to a public URL that works from any browser,
-anywhere, forever:
+The app is also running live in this Arena session — you can use the
+**"InvestRiskFreeAI app" LIVE PREVIEW panel** in the chat for instant access
+(the preview panel carries the sandbox access token automatically).
 
-1. Make sure this repo is on your GitHub account: `github.com/govinda4470/InvestRiskFreeAI` (it is).
-2. Go to **https://share.streamlit.io** (or https://streamlit.io → "Deploy an app").
-3. Sign in with your GitHub account.
-4. Click **"Deploy an app"** → paste the repo URL:
-   `https://github.com/govinda4470/InvestRiskFreeAI`
-5. Set:
-   - Branch: `main` (after you merge PR #1) or `arena/019fd6a2-investriskfreeai`
-   - Main file path: `app.py`
-6. Click **Deploy**. In ~3 minutes you get:
-   `https://investriskfreeai.streamlit.app` — your permanent public link. 🎉
-
-> Free tier note: the sandbox can't reach external market data feeds, so the
-> bundled NSE 2012–2022 dataset is used automatically. On your own computer you
-> get live data with the sidebar toggle (see STEP 7).
-
-### Option C — Run it locally on your computer (live data)
-Full live-data mode with fresh NSE prices — see STEP 7 below.
+> 💡 If the Streamlit link ever shows a "waking up" screen, just wait 30–60
+> seconds and refresh — the free tier sleeps after long inactivity and wakes on
+> first visit.
 
 ---
 
