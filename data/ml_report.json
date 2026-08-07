@@ -1,37 +1,111 @@
 {
   "meta": {
-    "built_at": "2026-08-06 10:59:15",
-    "symbols": 10,
-    "splits": 3
+    "built_at": "2026-08-07T09:06:36+00:00",
+    "symbols": 50,
+    "splits": 3,
+    "method": "expanding train / non-overlapping future test windows",
+    "label_alignment": "signal-close features mapped to next-open trade outcome"
   },
   "swing_trend": {
     "trained": true,
-    "n_oos": 649,
-    "baseline_win_rate": 42.83513097072419,
-    "oos_win_rate": 42.83513097072419,
-    "accuracy": 63.63636363636363,
-    "precision_when_win": 59.905660377358494,
-    "lift": 1.3985170354282612,
-    "n_entries": 461
+    "n_oos": 1192,
+    "baseline_win_rate": 39.848993288590606,
+    "oos_win_rate": 39.848993288590606,
+    "accuracy": 61.15771812080537,
+    "precision_when_win": 51.52284263959391,
+    "lift": 1.2929521773978092,
+    "brier_score": 0.23487429530506349,
+    "folds": [
+      {
+        "fold": 1,
+        "train_rows": 564,
+        "test_rows": 459,
+        "test_start": "2016-08-01",
+        "test_end": "2018-08-17"
+      },
+      {
+        "fold": 2,
+        "train_rows": 1023,
+        "test_rows": 335,
+        "test_start": "2018-08-24",
+        "test_end": "2020-09-11"
+      },
+      {
+        "fold": 3,
+        "train_rows": 1358,
+        "test_rows": 398,
+        "test_start": "2020-09-14",
+        "test_end": "2022-10-06"
+      }
+    ],
+    "n_entries": 1765
   },
   "swing_breakout": {
     "trained": true,
-    "n_oos": 495,
-    "baseline_win_rate": 37.97979797979798,
-    "oos_win_rate": 37.97979797979798,
-    "accuracy": 59.59595959595959,
-    "precision_when_win": 45.52238805970149,
-    "lift": 1.1985947919974596,
-    "n_entries": 343
+    "n_oos": 928,
+    "baseline_win_rate": 39.331896551724135,
+    "oos_win_rate": 39.331896551724135,
+    "accuracy": 58.620689655172406,
+    "precision_when_win": 42.27642276422765,
+    "lift": 1.074863570553514,
+    "brier_score": 0.24477168064854957,
+    "folds": [
+      {
+        "fold": 1,
+        "train_rows": 424,
+        "test_rows": 355,
+        "test_start": "2016-08-01",
+        "test_end": "2018-08-20"
+      },
+      {
+        "fold": 2,
+        "train_rows": 779,
+        "test_rows": 225,
+        "test_start": "2018-08-21",
+        "test_end": "2020-08-28"
+      },
+      {
+        "fold": 3,
+        "train_rows": 1004,
+        "test_rows": 348,
+        "test_start": "2020-09-10",
+        "test_end": "2022-09-29"
+      }
+    ],
+    "n_entries": 1358
   },
   "invest": {
     "trained": true,
-    "n_oos": 139,
-    "baseline_win_rate": 36.69064748201439,
-    "oos_win_rate": 36.69064748201439,
-    "accuracy": 65.46762589928058,
-    "precision_when_win": 52.63157894736842,
-    "lift": 1.4344685242518058,
-    "n_entries": 204
+    "n_oos": 480,
+    "baseline_win_rate": 42.5,
+    "oos_win_rate": 42.5,
+    "accuracy": 69.79166666666666,
+    "precision_when_win": 64.11483253588517,
+    "lift": 1.508584294962004,
+    "brier_score": 0.2080547945908184,
+    "folds": [
+      {
+        "fold": 1,
+        "train_rows": 255,
+        "test_rows": 182,
+        "test_start": "2016-09-12",
+        "test_end": "2018-09-17"
+      },
+      {
+        "fold": 2,
+        "train_rows": 437,
+        "test_rows": 127,
+        "test_start": "2018-11-26",
+        "test_end": "2020-09-17"
+      },
+      {
+        "fold": 3,
+        "train_rows": 564,
+        "test_rows": 171,
+        "test_start": "2020-10-07",
+        "test_end": "2022-10-06"
+      }
+    ],
+    "n_entries": 735
   }
 }

@@ -11,6 +11,8 @@ import pytest
 warnings.filterwarnings("ignore")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from investriskfree.auth import AuthStore
+from investriskfree.autotrade import AutoTradeAgent
 from investriskfree.backtest import Backtester, CostModel
 from investriskfree.brain import market_regime, position_size
 from investriskfree.config import get
@@ -131,7 +133,6 @@ def test_scanner():
 
 
 def test_paper_topup(tmp_path):
-    from investriskfree.brain import suggest_position_from_cash
     db = str(tmp_path / "paper2.db")
     b = PaperBroker(db_path=db)
     b.create_account(50_000)
@@ -141,14 +142,14 @@ def test_paper_topup(tmp_path):
     assert s["capital"] == 75_000 and s["cash"] == 75_000
     evs = b.capital_events()
     assert len(evs) == 2  # INITIAL + TOPUP
-    assert evs[0]["type"] == "TOPUP" and evs[0]["amount"] == 25_000
+    assert evs[0]["type"] == "DEPOSIT" and evs[0]["amount"] == 25_000
 
 
 def test_suggest_position_from_cash():
     from investriskfree.brain import suggest_position_from_cash
-    # cash 100k, equity 100k, entry 100, sl 95: risk budget 500 -> 100 shares
+    # Slippage is included, so quantity stays just below the nominal 100 shares.
     sugg = suggest_position_from_cash(100_000, 100_000, 100, 95)
-    assert sugg["qty"] == 100 and not sugg["blocked"]
+    assert sugg["qty"] == 99 and not sugg["blocked"]
     assert sugg["pos_value"] <= 100_000
     # cash too small to afford even 1 share
     sugg2 = suggest_position_from_cash(50, 100_000, 100, 95)
@@ -159,12 +160,82 @@ def test_suggest_position_from_cash():
     assert sugg3["pos_value"] + sugg3["cost"] <= 8_000
 
 
-def test_auth_credentials():
-    valid_users = {
-        "admin": ["admin123", "investriskfree", "admin"],
-        "user": ["user123", "investriskfree", "admin123"],
-        "govinda4470": ["admin123", "investriskfree", "govinda4470"],
+def test_signup_and_hashed_authentication(tmp_path):
+    auth = AuthStore(str(tmp_path / "auth.db"))
+    result = auth.register("new_trader", "trader@example.com", "SafePassword42", "New Trader")
+    assert result["ok"]
+    assert auth.authenticate("NEW_TRADER", "SafePassword42")["ok"]
+    assert not auth.authenticate("new_trader", "wrong-password")["ok"]
+    # Password material is never stored in plaintext.
+    import sqlite3
+    with sqlite3.connect(str(tmp_path / "auth.db")) as conn:
+        password_hash, salt = conn.execute(
+            "SELECT password_hash, salt FROM users WHERE username='new_trader'"
+        ).fetchone()
+    assert "SafePassword42" not in password_hash
+    assert len(password_hash) == 64 and len(salt) == 48
+    duplicate = auth.register("new_trader", "other@example.com", "OtherPassword42")
+    assert not duplicate["ok"]
+
+
+def test_user_capital_withdrawal_and_equity_snapshots(tmp_path):
+    broker = PaperBroker(db_path=str(tmp_path / "capital.db"))
+    broker.create_account(100_000)
+    assert broker.adjust_capital(20_000)["ok"]
+    assert broker.adjust_capital(-10_000)["ok"]
+    assert broker.summary()["capital"] == 110_000
+    assert not broker.adjust_capital(-200_000)["ok"]
+    curve = broker.equity_curve()
+    assert len(curve) == 3
+    assert curve.iloc[-1]["net_deposits"] == 110_000
+
+
+def test_auto_agent_is_risk_sized_and_idempotent(tmp_path, monkeypatch):
+    broker = PaperBroker(db_path=str(tmp_path / "agent.db"))
+    broker.create_account(100_000)
+    agent = AutoTradeAgent(broker)
+    signal = {
+        "symbol": "ITC", "style": "swing", "strategy": "swing_trend",
+        "entry_ref": 100.0, "last_price": 100.0, "sl": 95.0, "target": 110.0,
+        "rr": 2.0, "confidence": 80.0, "blocked": None,
+        "reason": "test signal", "as_of": "2026-08-07",
+        "gap_from_entry_pct": 0.0, "profit_prob_pct": 55.0,
     }
-    assert "admin123" in valid_users["admin"]
-    assert "investriskfree" in valid_users["user"]
-    assert "govinda4470" in valid_users["govinda4470"]
+    monkeypatch.setattr("investriskfree.autotrade.scan", lambda **_: [signal])
+    monkeypatch.setattr(AutoTradeAgent, "_latest_price", staticmethod(lambda *_, **__: 100.0))
+    preview = agent.run_once(force=True)
+    assert preview["ok"] and preview["entries"] == 0
+    assert not broker.positions()
+    agent.update_config(enabled=True, min_confidence=65, risk_pct=0.5)
+    first = agent.run_once()
+    assert first["ok"] and first["entries"] == 1
+    positions = broker.positions()
+    assert len(positions) == 1
+    # Expected-fill slippage is included, keeping actual risk <= ₹500.
+    assert positions[0]["qty"] == 99
+    second = agent.run_once()
+    assert second["entries"] == 0
+    assert len(broker.positions()) == 1
+
+
+def test_kronos_input_adapter_without_optional_runtime(daily):
+    from investriskfree.kronos_forecast import future_business_timestamps, prepare_kline_frame
+    prepared = prepare_kline_frame(daily, lookback=128)
+    assert list(prepared.columns) == ["open", "high", "low", "close", "volume", "amount"]
+    assert len(prepared) == 128
+    future = future_business_timestamps(prepared.index[-1], 5)
+    assert len(future) == 5 and (future.dayofweek < 5).all()
+
+
+def test_ml_walk_forward_windows_do_not_repeat_rows():
+    from investriskfree.ml import FEATURE_COLS, WinProbModel
+    rng = np.random.default_rng(7)
+    dates = pd.date_range("2012-01-01", "2022-12-31", periods=500)
+    features = pd.DataFrame(rng.normal(size=(500, len(FEATURE_COLS))),
+                            index=dates, columns=FEATURE_COLS)
+    labels = pd.Series((features["rsi14"] + rng.normal(size=500) > 0).astype(int), index=dates)
+    model = WinProbModel(epochs=30)
+    report = model.walk_forward(features, labels, n_splits=3, min_train_years=3)
+    assert report["trained"]
+    assert report["n_oos"] <= len(features)
+    assert sum(fold["test_rows"] for fold in report["folds"]) == report["n_oos"]

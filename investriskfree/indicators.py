@@ -63,7 +63,7 @@ def donchian(df: pd.DataFrame, period: int = 20) -> pd.DataFrame:
 
 def adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
     """Average Directional Index (trend strength, 0-100)."""
-    high, low, close = df["High"], df["Low"], df["Close"]
+    high, low = df["High"], df["Low"]
     up_move = high.diff()
     down_move = -low.diff()
     plus_dm = pd.Series(

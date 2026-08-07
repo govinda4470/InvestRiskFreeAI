@@ -134,12 +134,14 @@ class Backtester:
         sl_on_close = bool(sig["sl_on_close"].iloc[0]) if "sl_on_close" in sig else False
 
         n = len(df)
+        if n == 0:
+            raise ValueError("cannot backtest an empty price frame")
         dates = df.index
         cash = float(capital)
         pos = None
         trades: list[Trade] = []
         filtered = 0
-        eq = np.zeros(n)
+        eq = np.full(n, float(capital), dtype=float)
         equity_val = capital
 
         def enter_at(idx: int):
@@ -260,6 +262,9 @@ class Backtester:
 
         if pos is not None:  # liquidate any leftover at last close
             exit_pos(n - 1, c[n - 1], "End of data")
+            # Include liquidation slippage and sell costs in final equity.
+            equity_val = cash
+            eq[n - 1] = cash
 
         equity = pd.Series(eq, index=dates)
         result = BacktestResult(

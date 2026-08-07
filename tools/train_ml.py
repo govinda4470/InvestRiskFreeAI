@@ -21,7 +21,6 @@ import os
 import sys
 import warnings
 
-import numpy as np
 import pandas as pd
 
 warnings.filterwarnings("ignore")
@@ -35,6 +34,7 @@ from investriskfree.ml import FEATURE_COLS, WinProbModel, build_features  # noqa
 from investriskfree.strategies import StrategyRegistry  # noqa: E402
 
 OUT_PATH = os.path.join(get("data.repo_root"), "data", "ml_report.json")
+MODEL_PATH = os.path.join(get("data.repo_root"), "data", "ml_models.json")
 
 
 def main() -> None:
@@ -57,8 +57,15 @@ def main() -> None:
     regs = {s: regime.reindex(load_daily(s).index).ffill().fillna(False).to_numpy()
             for s in closes}
 
-    report = {"meta": {"built_at": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
-                       "symbols": len(symbols), "splits": args.splits}}
+    built_at = pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds")
+    report = {"meta": {
+        "built_at": built_at,
+        "symbols": len(symbols),
+        "splits": args.splits,
+        "method": "expanding train / non-overlapping future test windows",
+        "label_alignment": "signal-close features mapped to next-open trade outcome",
+    }}
+    model_registry = {"meta": {"built_at": built_at, "feature_cols": FEATURE_COLS}}
     for name, strat in StrategyRegistry.all().items():
         if strat.style == "intraday" or not get(f"strategies.{name}.enabled", False):
             continue
@@ -69,10 +76,15 @@ def main() -> None:
                 res = Backtester().run(df, strat, regime_ok=regs[sym], capital=100_000)
                 sig = strat.signals(df)
                 fe = build_features(df, sig, breadth=None)
-                wins = {}
-                for t in res.trades:
-                    wins[pd.Timestamp(t.entry_date)] = 1 if t.net_pnl > 0 else 0
-                lab = pd.Series(wins, name="label")
+                # Backtester executes a close-generated signal at the next open.
+                # Associate the outcome with the PREVIOUS (signal) bar so the
+                # feature row cannot see the entry day's close/high/low.
+                outcomes = {}
+                for trade in res.trades:
+                    location = df.index.get_indexer([pd.Timestamp(trade.entry_date)])[0]
+                    if location > 0:
+                        outcomes[pd.Timestamp(df.index[location - 1])] = int(trade.net_pnl > 0)
+                lab = pd.Series(outcomes, name="label", dtype=float)
                 fe = fe.loc[fe.index.isin(lab.index)]
                 lab = lab.reindex(fe.index)
                 # unique (symbol, date) index so duplicate entry dates across
@@ -94,6 +106,9 @@ def main() -> None:
         rep["n_entries"] = int(len(fe))
         report[name] = rep
         if rep.get("trained"):
+            baseline = float(rep["baseline_win_rate"]) / 100
+            model_registry[name] = model.to_dict(baseline=baseline)
+            model_registry[name]["oos_report"] = rep
             print(f"{name:18s} OOS n={rep['n_oos']} base={rep['baseline_win_rate']:.1f}% "
                   f"acc={rep['accuracy']:.1f}% prec={rep['precision_when_win']:.1f}% "
                   f"lift={rep['lift']:.2f}x")
@@ -102,7 +117,10 @@ def main() -> None:
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     with open(OUT_PATH, "w") as f:
         json.dump(report, f, indent=2)
+    with open(MODEL_PATH, "w") as f:
+        json.dump(model_registry, f, indent=2)
     print(f"\nWrote {OUT_PATH}")
+    print(f"Wrote {MODEL_PATH}")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 """Swing-trading strategies (daily bars, 2-25 day holding period)."""
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from .. import indicators as ta
