@@ -36,10 +36,14 @@ The app is also running live in this Arena session — you can use the
 
 ---
 
-## STEP 1 — Open the app
+## STEP 1 — Open the app & Log In
 
 1. Click the **LIVE APP LINK** above.
-2. You will see the **Dashboard** with:
+2. You will be greeted by the **Secure Login Screen** (`require_login` authentication gate):
+   - **Username**: `admin`
+   - **Password**: `admin123` (or `investriskfree`)
+   - *(If deployed on your own Streamlit Community Cloud account, you can customize credentials in App Settings → Secrets).*
+3. After logging in, you will see the **Dashboard** with:
    - 🟢 **Market Regime** (RISK-ON / NEUTRAL / RISK-OFF) — if it's RED (RISK-OFF),
      longs are blocked. Do not fight it.
    - **Today's AI Signals** table — every row is a potential trade with its

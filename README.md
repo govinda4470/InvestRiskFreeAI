@@ -11,6 +11,9 @@ virtual money first, and hard risk rules make sure your capital survives.
 > 🌐 **Try it live now:** 👉 **https://investriskfreeai-goroy.streamlit.app/**
 > (deployed on Streamlit Community Cloud — works from any browser, no setup).
 > See **[DEPLOY.md](DEPLOY.md)** to re-deploy or update it.
+>
+> 🔒 **Secure Login (Demo Credentials):** Username: `admin` | Password: `admin123` (or `investriskfree`).
+> You can also configure your own private credentials in Streamlit Cloud Secrets.
 
 > ⚠️ **Honest words up front (read this twice):** there is no such thing as a
 > risk-free return in markets. Anyone promising one is lying to you. What this

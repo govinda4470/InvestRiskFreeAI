@@ -21,6 +21,19 @@ The app is already running on Streamlit Community Cloud (free tier, created by
 5. To update the deployed app after new commits: on the app page click
    **Manage app** → **Reboot** (or "Rerun" picks up new commits automatically).
 
+### 🔒 Secure Login & Password Protection (Streamlit Secrets)
+By default, the Streamlit app opens to a **Secure Login screen**.
+- **Default demo credentials**: Username `admin` | Password `admin123` (or `investriskfree`)
+- **To configure your own private credentials on Streamlit Community Cloud**:
+  1. In your app dashboard at **https://share.streamlit.io**, click **⋮ (Settings) → Settings → Secrets**.
+  2. Add:
+     ```toml
+     [auth]
+     username = "my_private_user"
+     password = "my_secure_password"
+     ```
+  3. Click **Save**. The login page will immediately check against your custom password.
+
 **Notes**
 - The cloud sandbox cannot reach NSE/Yahoo feeds, so it automatically uses the
   bundled real NSE dataset (2012–2022) — perfect for demos and learning.
