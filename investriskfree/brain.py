@@ -37,7 +37,7 @@ def regime_label(index_df: pd.DataFrame, breadth: float | None = None) -> tuple[
     close = index_df["Close"]
     sma200 = ta.sma(close, 200).iloc[-1]
     last = close.iloc[-1]
-    dist = (last / sma200 - 1) * 100 if sma200 == sma200 else 0.0
+    dist = (last / sma200 - 1) * 100 if np.isfinite(sma200) else 0.0
     b = breadth if breadth is not None else 0.5
     if dist > 0 and b >= get("brain.regime.min_breadth", 0.4):
         label = "RISK-ON" if (dist > 2 and b > 0.6) else "NEUTRAL"
@@ -104,7 +104,7 @@ def confidence_score(
     # confluence bonus (10): multiple strategies agreeing
     score += min(10, (confluence - 1) * 5)
     # ML agreement (optional)
-    if p_win is not None and p_win == p_win:
+    if p_win is not None and np.isfinite(p_win):
         if p_win >= 0.55:
             score += 5
         elif p_win < 0.45:
@@ -160,27 +160,31 @@ def suggest_position_from_cash(
     if entry <= 0 or sl <= 0 or entry <= sl:
         return {"qty": 0, "pos_value": 0.0, "cost": 0.0, "risk_rs": 0.0,
                 "blocked": "invalid entry/stop levels"}
+    # Size from the conservative expected fill, not the displayed quote. This
+    # prevents slippage from pushing the actual order above the risk budget.
+    slip = get("costs.slippage_intraday") if style == "intraday" else get("costs.slippage_daily")
+    fill_entry = entry * (1 + slip)
     risk_amt = equity * risk_pct
-    risk_per_share = entry - sl
+    risk_per_share = fill_entry - sl
     qty = int(risk_amt // risk_per_share)
     if qty <= 0:
         return {"qty": 0, "pos_value": 0.0, "cost": 0.0, "risk_rs": risk_amt,
                 "blocked": f"equity too small: risk ₹{risk_amt:,.0f} < 1 share's risk ₹{risk_per_share:,.0f}"}
     # cap by max position % of equity
-    max_qty_by_pos = int(equity * max_pos_pct // entry)
+    max_qty_by_pos = int(equity * max_pos_pct // fill_entry)
     qty = min(qty, max_qty_by_pos)
-    # clamp to what cash can afford (including buy costs)
+    # clamp to what cash can afford (including slippage and buy costs)
     while qty > 0:
-        pos_value = qty * entry
-        cost = cm.buy_charges(qty, entry, style)
+        pos_value = qty * fill_entry
+        cost = cm.buy_charges(qty, fill_entry, style)
         if pos_value + cost <= cash:
             break
         qty -= 1
     if qty <= 0:
         return {"qty": 0, "pos_value": 0.0, "cost": 0.0, "risk_rs": risk_amt,
-                "blocked": f"cash ₹{cash:,.0f} can't afford even 1 share @ ₹{entry:,.0f}"}
-    pos_value = qty * entry
-    cost = cm.buy_charges(qty, entry, style)
+                "blocked": f"cash ₹{cash:,.0f} can't afford even 1 share @ ₹{fill_entry:,.0f}"}
+    pos_value = qty * fill_entry
+    cost = cm.buy_charges(qty, fill_entry, style)
     if pos_value < min_value:
         return {"qty": qty, "pos_value": pos_value, "cost": cost, "risk_rs": risk_amt,
                 "blocked": f"position ₹{pos_value:,.0f} below min ₹{min_value:,.0f} (costs eat profits)"}

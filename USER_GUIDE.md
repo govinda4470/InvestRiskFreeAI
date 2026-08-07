@@ -36,14 +36,15 @@ The app is also running live in this Arena session — you can use the
 
 ---
 
-## STEP 1 — Open the app & Log In
+## STEP 1 — Open the app, sign up & log in
 
 1. Click the **LIVE APP LINK** above.
-2. You will be greeted by the **Secure Login Screen** (`require_login` authentication gate):
-   - **Username**: `admin`
-   - **Password**: `admin123` (or `investriskfree`)
-   - *(If deployed on your own Streamlit Community Cloud account, you can customize credentials in App Settings → Secrets).*
-3. After logging in, you will see the **Dashboard** with:
+2. Open **✨ Sign up**, choose your display name, username, e-mail and a password
+   of at least 10 characters containing a letter and a number.
+3. Your password is salted and hashed. Your virtual capital, positions, trades,
+   charts and auto-agent configuration are stored in a ledger isolated from all
+   other users. There is no hardcoded shared demo password.
+4. After signing up (or later logging in), you will see the **Dashboard** with:
    - 🟢 **Market Regime** (RISK-ON / NEUTRAL / RISK-OFF) — if it's RED (RISK-OFF),
      longs are blocked. Do not fight it.
    - **Today's AI Signals** table — every row is a potential trade with its
@@ -126,6 +127,30 @@ suggestion engine and the "risk ₹" figures update instantly. Conservative star
 
 ---
 
+## STEP 4B — Let the AI agent paper-trade accepted signals
+
+1. Open **🤖 Auto-Trade Agent** after creating your virtual account.
+2. Choose allowed styles/strategies, minimum confidence, risk per trade, daily
+   realized-loss stop, max entries per cycle and the maximum allowed live-price gap.
+3. To arm it, type `ARM PAPER AGENT` and save. This confirmation only arms
+   **virtual paper orders**; there is no real broker connection.
+4. Click **Run agent cycle now**. The agent checks stops/targets first, scans for
+   new accepted signals, deduplicates them, sizes from *your current equity and
+   cash*, and records every execute/skip/reject decision.
+5. Use **Cycle history**, **Decision audit**, and **Auto-trade results** to inspect
+   what happened. The Paper Trading page adds equity/drawdown, strategy P&L bars
+   and cumulative P&L history.
+6. For continuous paper monitoring on an always-on computer, run:
+
+```bash
+python tools/run_agents.py --loop --interval 300 --live
+```
+
+Streamlit Community Cloud does not guarantee a background worker. `yfinance` is
+delayed and should not be treated as a broker-grade realtime feed.
+
+---
+
 ## STEP 5 — Verify a strategy before trusting it
 
 In **🔬 Backtest Lab**:
@@ -168,8 +193,18 @@ Strategy signal
 ```
 
 The **Strategy Research** page shows the ML gate's honest out-of-sample results
-(trained on past years, tested on future years it never saw): 63.6% accuracy,
-1.4× lift vs baseline for TrendRider.
+(trained on past years, tested on non-overlapping future windows it never saw).
+The current 50-stock build reports 61.2% accuracy and 1.29× precision lift for
+TrendRider; always read the latest in-app report because retraining changes it.
+
+---
+
+### Optional Kronos forecast confirmation
+
+The Strategy Research page includes an optional Kronos-mini OHLCV forecast lab.
+Install it with `pip install -r requirements-kronos.txt`. Treat the output as an
+uncertain forecast/confluence check—not a win probability or instruction to buy.
+The agent can require a positive Kronos forecast in addition to every normal gate.
 
 ---
 

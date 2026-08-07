@@ -19,9 +19,7 @@ import pandas as pd
 
 from .backtest import Backtester
 from .brain import market_regime
-from .config import get
 from .data.loader import list_bundled_symbols, load_daily
-from .data.universe import get_universe
 from .strategies import StrategyRegistry
 
 

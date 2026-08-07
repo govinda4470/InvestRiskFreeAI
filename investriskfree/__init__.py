@@ -7,4 +7,4 @@ Design goals (in priority order):
 4. Transparency     - every signal shows the reasoning, the backtest stats, the cost model
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
