@@ -71,6 +71,8 @@ Entry ≈ ₹334   SL ₹316   TGT ₹362   R:R 1:1.6 · P(win) 42% · ~5 days
 | Field | Meaning |
 |---|---|
 | **Entry ≈** | Reference buy price (signal close). In reality you'd enter near the next open. |
+| **Last ₹** | Latest market price (real-time via yfinance in live mode, or latest close offline). |
+| **vs Entry** | Gap % between the current Last price and the reference Entry price. |
 | **SL** | Stop-loss. If price touches this, exit. No exceptions. |
 | **TGT** | Target. Where the system books profit. |
 | **R:R** | Reward:Risk = 1:1.6. You risk 1 to make 1.6. |
@@ -182,8 +184,11 @@ pip install -r requirements.txt
 streamlit run app.py
 # opens at http://localhost:8501
 
-# 3. Today's signals from the terminal (no browser needed)
+# 3. Today's signals from the terminal (offline bundled data)
 python -m investriskfree scan --capital 100000
+
+# 3b. Today's signals with live yfinance Last Price and vs-Entry gap %
+python -m investriskfree scan --capital 100000 --live
 
 # 4. Backtest any stock x strategy
 python -m investriskfree backtest RELIANCE swing_trend --trades

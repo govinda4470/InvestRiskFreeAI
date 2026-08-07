@@ -79,8 +79,11 @@ pip install -r requirements.txt
 # 1) Web app — signals, paper trading, backtest lab
 streamlit run app.py
 
-# 2) CLI — today's signals
+# 2) CLI — today's signals (offline bundled data)
 python -m investriskfree scan --capital 100000
+
+# 2b) CLI — today's signals with live yfinance Last Price & vs-Entry gap %
+python -m investriskfree scan --capital 100000 --live
 
 # 3) CLI — backtest a stock + strategy
 python -m investriskfree backtest RELIANCE swing_trend --trades
@@ -197,7 +200,8 @@ paper broker is the only executor until the user has a proven record.
 - [x] AI Brain: regime + confidence + walk-forward ML gate
 - [x] Paper trading with virtual money + trade journal
 - [x] 10 years of real NSE data bundled for offline demo
-- [ ] Live data mode (yfinance) — works on your machine, one toggle
+- [x] Live data mode (yfinance) — works on your machine, one toggle
+- [x] Signals: real-time yfinance Last Price + vs-Entry gap %
 - [ ] Kite Connect / SmartAPI broker adapters (live execution)
 - [ ] Telegram signal alerts
 - [ ] Multi-strategy portfolio backtest (capital allocation across strategies)
