@@ -36,10 +36,14 @@ The app is also running live in this Arena session — you can use the
 
 ---
 
-## STEP 1 — Open the app
+## STEP 1 — Open the app & Log In
 
 1. Click the **LIVE APP LINK** above.
-2. You will see the **Dashboard** with:
+2. You will be greeted by the **Secure Login Screen** (`require_login` authentication gate):
+   - **Username**: `admin`
+   - **Password**: `admin123` (or `investriskfree`)
+   - *(If deployed on your own Streamlit Community Cloud account, you can customize credentials in App Settings → Secrets).*
+3. After logging in, you will see the **Dashboard** with:
    - 🟢 **Market Regime** (RISK-ON / NEUTRAL / RISK-OFF) — if it's RED (RISK-OFF),
      longs are blocked. Do not fight it.
    - **Today's AI Signals** table — every row is a potential trade with its
@@ -71,6 +75,8 @@ Entry ≈ ₹334   SL ₹316   TGT ₹362   R:R 1:1.6 · P(win) 42% · ~5 days
 | Field | Meaning |
 |---|---|
 | **Entry ≈** | Reference buy price (signal close). In reality you'd enter near the next open. |
+| **Last ₹** | Latest market price (real-time via yfinance in live mode, or latest close offline). |
+| **vs Entry** | Gap % between the current Last price and the reference Entry price. |
 | **SL** | Stop-loss. If price touches this, exit. No exceptions. |
 | **TGT** | Target. Where the system books profit. |
 | **R:R** | Reward:Risk = 1:1.6. You risk 1 to make 1.6. |
@@ -182,8 +188,11 @@ pip install -r requirements.txt
 streamlit run app.py
 # opens at http://localhost:8501
 
-# 3. Today's signals from the terminal (no browser needed)
+# 3. Today's signals from the terminal (offline bundled data)
 python -m investriskfree scan --capital 100000
+
+# 3b. Today's signals with live yfinance Last Price and vs-Entry gap %
+python -m investriskfree scan --capital 100000 --live
 
 # 4. Backtest any stock x strategy
 python -m investriskfree backtest RELIANCE swing_trend --trades

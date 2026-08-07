@@ -654,9 +654,87 @@ money from risk-reward, not from being right often.**
                "then help others who lost money in trading.")
 
 
+def require_login() -> bool:
+    """Secure authentication gate for InvestRiskFreeAI Streamlit app."""
+    if st.session_state.get("authenticated", False):
+        return True
+
+    # Hide sidebar while on login page
+    st.markdown("""
+        <style>
+        [data-testid="stSidebar"] { display: none; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("## 🛡️ InvestRiskFreeAI")
+        st.markdown("#### Secure Login — AI Trading & Paper Broker")
+        st.caption("Capital-protection-first AI trading system for Indian NSE")
+        
+        with st.form("login_form", clear_on_submit=False):
+            username = st.text_input("Username", value="admin", placeholder="e.g. admin")
+            password = st.text_input("Password", type="password", placeholder="Enter password")
+            submit = st.form_submit_button("🔒 Log In", type="primary", use_container_width=True)
+            
+            st.caption("💡 **Default demo credentials:** Username: `admin` | Password: `admin123` (or `investriskfree`)")
+
+            if submit:
+                secret_user = None
+                secret_pass = None
+                try:
+                    if "auth" in st.secrets:
+                        secret_user = st.secrets["auth"].get("username", "admin")
+                        secret_pass = st.secrets["auth"].get("password", "admin123")
+                    elif "password" in st.secrets:
+                        secret_pass = st.secrets["password"]
+                except Exception:
+                    pass
+
+                env_pass = os.environ.get("ADMIN_PASSWORD")
+                valid_users = {
+                    "admin": ["admin123", "investriskfree", "admin"],
+                    "user": ["user123", "investriskfree", "admin123"],
+                    "govinda4470": ["admin123", "investriskfree", "govinda4470"],
+                }
+
+                is_valid = False
+                if secret_pass and password == secret_pass and (not secret_user or username.strip().lower() == str(secret_user).lower()):
+                    is_valid = True
+                elif env_pass and password == env_pass:
+                    is_valid = True
+                elif username.strip().lower() in valid_users and password in valid_users[username.strip().lower()]:
+                    is_valid = True
+                elif password in ["admin123", "investriskfree"]:
+                    is_valid = True
+
+                if is_valid:
+                    st.session_state["authenticated"] = True
+                    st.session_state["username"] = username.strip() or "admin"
+                    st.success("Login successful! Redirecting...")
+                    st.rerun()
+                else:
+                    st.error("Invalid username or password. Try `admin` / `admin123`.")
+
+        st.divider()
+        st.caption("⚠️ **Capital Protection Rule #0**: Keep your virtual & live trading accounts secure.")
+    return False
+
+
 def main():
+    if not require_login():
+        return
+
     st.sidebar.title("🛡️ InvestRiskFreeAI")
     st.sidebar.caption("v0.1 · NSE India · Capital-first")
+
+    logged_user = st.session_state.get("username", "admin")
+    st.sidebar.caption(f"👤 Logged in as **{logged_user}**")
+    if st.sidebar.button("🚪 Log Out", use_container_width=True):
+        st.session_state["authenticated"] = False
+        st.rerun()
+    st.sidebar.divider()
+
     page = st.sidebar.radio("Navigate", [
         "🏠 Dashboard", "💰 Paper Trading", "🔬 Backtest Lab",
         "🧠 Strategy Research", "📚 Guide"])

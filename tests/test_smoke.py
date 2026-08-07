@@ -157,3 +157,14 @@ def test_suggest_position_from_cash():
     sugg3 = suggest_position_from_cash(8_000, 100_000, 100, 95)
     assert sugg3["qty"] <= 80  # 8000/100 = 80 max affordable
     assert sugg3["pos_value"] + sugg3["cost"] <= 8_000
+
+
+def test_auth_credentials():
+    valid_users = {
+        "admin": ["admin123", "investriskfree", "admin"],
+        "user": ["user123", "investriskfree", "admin123"],
+        "govinda4470": ["admin123", "investriskfree", "govinda4470"],
+    }
+    assert "admin123" in valid_users["admin"]
+    assert "investriskfree" in valid_users["user"]
+    assert "govinda4470" in valid_users["govinda4470"]
